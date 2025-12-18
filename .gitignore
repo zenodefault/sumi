@@ -1,0 +1,90 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Environment and secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+**/.env
+**/env/
+**/environment/
+
+# Secrets and credentials
+**/secret*
+**/secrets*
+**/credential*
+**/credentials*
+**/key*
+**/keys*
+**/token*
+**/tokens*
+**/auth*
+**/password*
+**/config.json
+**/local.properties
+**/gradle.properties
+
+# API keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.ovpn
+*.kdbx
+
+# Additional Flutter/Dart sensitive files
+.dart_tool/package_config.lock
+.dart_tool/extension_discovery/*.cache
+.fvm/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Secure storage related
+**/flutter_secure_storage*
