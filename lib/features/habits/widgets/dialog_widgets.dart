@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/app_icons.dart';
 import '../models/habit_model.dart';
 
 class HabitDialogHelper {
@@ -13,7 +12,6 @@ class HabitDialogHelper {
     String selectedCategory = 'Health';
     String selectedPriority = 'Medium';
     bool isDaily = true;
-    String reminderTime = '08:00';
     final categories = <String>[
       'Health',
       'Fitness',
@@ -195,22 +193,7 @@ class HabitDialogHelper {
 
                       const SizedBox(height: 12),
 
-                      // Time picker
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: AppIcon(AppIcons.time),
-                        title: Text('Reminder time'),
-                        subtitle: Text(reminderTime),
-                        onTap: () => _selectTime(context).then((value) {
-                          if (value != null) {
-                            setModalState(() {
-                              reminderTime = value;
-                            });
-                          }
-                        }),
-                      ),
-
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
 
                       // Submit button
                       ElevatedButton(
@@ -224,7 +207,7 @@ class HabitDialogHelper {
                               category: selectedCategory,
                               priority: selectedPriority,
                               isDaily: isDaily,
-                              reminderTime: reminderTime,
+                              reminderTime: '08:00',
                               startDate: DateTime.now(),
                             );
 
@@ -274,7 +257,6 @@ class HabitDialogHelper {
     String selectedCategory = habit.category;
     String selectedPriority = habit.priority;
     bool isDaily = habit.isDaily;
-    String reminderTime = habit.reminderTime;
     final categories = <String>[
       'Health',
       'Fitness',
@@ -443,20 +425,7 @@ class HabitDialogHelper {
                         },
                       ),
                       const SizedBox(height: 12),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: AppIcon(AppIcons.time),
-                        title: Text('Reminder time'),
-                        subtitle: Text(reminderTime),
-                        onTap: () => _selectTime(context).then((value) {
-                          if (value != null) {
-                            setModalState(() {
-                              reminderTime = value;
-                            });
-                          }
-                        }),
-                      ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 8),
                       ElevatedButton(
                         onPressed: () async {
                           if (formKey.currentState!.validate()) {
@@ -466,7 +435,7 @@ class HabitDialogHelper {
                               category: selectedCategory,
                               priority: selectedPriority,
                               isDaily: isDaily,
-                              reminderTime: reminderTime,
+                              reminderTime: habit.reminderTime,
                             );
 
                             onHabitUpdated(updatedHabit);
@@ -548,32 +517,5 @@ class HabitDialogHelper {
     );
   }
 
-  static Future<String?> _selectTime(BuildContext context) async {
-    final now = DateTime.now();
-    TimeOfDay initialTime = TimeOfDay(hour: now.hour, minute: now.minute);
-
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: Theme.of(context).colorScheme.secondary,
-              onPrimary: Colors.white,
-              surface: Theme.of(context).cardColor,
-              onSurface: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      return '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
-    }
-
-    return null;
-  }
+  
 }

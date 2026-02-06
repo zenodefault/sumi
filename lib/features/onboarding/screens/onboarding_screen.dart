@@ -35,7 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final Map<String, bool> _defaultHabits = {
     'Drink Water': true,
     '10-minute Walk': true,
-    'Stretching': true,
+    'Meditation': true,
   };
 
   @override
@@ -148,7 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
-    if (_step < 5) {
+    if (_step < 4) {
       _controller.nextPage(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -182,7 +182,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _buildProfile(theme, isLight),
             _buildGoals(theme, isLight),
             _buildHabits(theme, isLight),
-            _buildReminders(theme, isLight),
             _buildFinish(theme, isLight),
           ],
         ),
@@ -352,29 +351,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildReminders(ThemeData theme, bool isLight) {
-    return _centeredStep(
-      theme,
-      title: 'Reminders',
-      subtitle:
-          'Enable reminders to stay consistent with habits and workouts.',
-      icon: AppIcons.notification,
-      isLight: isLight,
-      child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'Stay consistent with reminders.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color:
-                isLight ? LightColors.foreground : DarkColors.foreground,
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
   Widget _buildFinish(ThemeData theme, bool isLight) {
     return _centeredStep(
       theme,
@@ -416,7 +392,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
-                    6,
+                    5,
                     (index) => AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 6),
