@@ -129,7 +129,10 @@ class IndianFoodModel {
   // Get serving size in grams
   double get servingWeightInGrams {
     try {
-      final match = RegExp(r'(\d+\.?\d*)\s*g').firstMatch(servingSize);
+      final match = RegExp(
+        r'(\\d+\\.?\\d*)\\s*(g|gm|gms|gram|grams)\\b',
+        caseSensitive: false,
+      ).firstMatch(servingSize);
       if (match != null) {
         return double.parse(match.group(1)!);
       }

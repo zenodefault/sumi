@@ -442,4 +442,13 @@ class FoodDatabaseService {
       return null;
     }
   }
+
+  static Future<IndianFoodModel?> getLocalFoodById(String id) async {
+    final foods = await _loadLocalFoods();
+    try {
+      return foods.firstWhere((food) => food.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
 }

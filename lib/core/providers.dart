@@ -492,6 +492,16 @@ class FitnessProvider extends ChangeNotifier {
         totalFat += food.fats * ratio;
         continue;
       }
+      final localFood = await FoodDatabaseService.getLocalFoodById(
+        log.foodItemId,
+      );
+      if (localFood != null) {
+        final ratio = log.quantity / 100.0;
+        totalCarbs += localFood.carbs * ratio;
+        totalProtein += localFood.protein * ratio;
+        totalFat += localFood.fats * ratio;
+        continue;
+      }
       final legacyFood = getFoodByIdSync(log.foodItemId);
       if (legacyFood != null) {
         final ratio = log.quantity / 100.0;

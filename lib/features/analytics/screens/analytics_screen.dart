@@ -127,7 +127,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ? LightColors.mutedForeground
                 : DarkColors.mutedForeground,
             onRefresh: () async {
-              await provider.updateDailyLogWithCalories();
+              await provider.refreshFromStorage(updateDaily: true);
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),

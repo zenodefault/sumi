@@ -453,8 +453,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         onPressed: _back,
                         child: const Text('Back'),
                       ),
-                    if (_step > 0 && _step < 5) const SizedBox(width: 12),
-                    if (_step < 5)
+                    if (_step > 0 && _step < 4) const SizedBox(width: 12),
+                    if (_step < 4)
                       ElevatedButton(
                         onPressed: _next,
                         child: const Text('Next'),

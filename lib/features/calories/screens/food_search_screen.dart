@@ -630,7 +630,10 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> {
   }
 
   bool _usesGramUnit(IndianFoodModel food) {
-    return RegExp(r'\d+\s*g', caseSensitive: false).hasMatch(food.servingSize);
+    return RegExp(
+      r'\d+\s*(g|gm|gms|gram|grams)\b',
+      caseSensitive: false,
+    ).hasMatch(food.servingSize);
   }
 
   String _unitLabel(IndianFoodModel food) {

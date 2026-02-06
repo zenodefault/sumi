@@ -5,6 +5,7 @@ import '../../../core/app_colors.dart';
 import '../../../core/providers.dart';
 import '../../../core/models.dart';
 import '../../../core/glass_widgets.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -14,6 +15,7 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  static final Uri _chai4MeUri = Uri.parse('https://chai4.me/zeno');
   bool _isEditing = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
@@ -297,7 +299,60 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ],
               ),
+            const SizedBox(height: 16),
+            _buildChai4MeCard(theme, isLight),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChai4MeCard(ThemeData theme, bool isLight) {
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          await launchUrl(
+            _chai4MeUri,
+            mode: LaunchMode.externalApplication,
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.network(
+                'https://chai4.me/icons/wordmark.png',
+                height: 28,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '@zeno',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isLight
+                      ? LightColors.mutedForeground
+                      : DarkColors.mutedForeground,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -51,10 +51,7 @@ class _CalorieTrackingScreenState extends State<CalorieTrackingScreen> {
           builder: (context, provider, child) {
             return RefreshIndicator(
               onRefresh: () async {
-                await provider.updateDailyLogWithCalories();
-                if (mounted) {
-                  setState(() {});
-                }
+                await provider.refreshFromStorage(updateDaily: true);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
