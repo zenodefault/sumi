@@ -1,15 +1,27 @@
 // Models for the fitness tracking app
 
+enum Sex { male, female, other }
+
+enum ActivityLevel { low, moderate, high }
+
 class User {
   final String id;
   final String name;
   final double weight;
+  final int age;
+  final Sex sex;
+  final double heightCm;
+  final ActivityLevel activityLevel;
   final DateTime createdAt;
 
   User({
     required this.id,
     required this.name,
     required this.weight,
+    required this.age,
+    required this.sex,
+    required this.heightCm,
+    required this.activityLevel,
     required this.createdAt,
   });
 
@@ -17,12 +29,20 @@ class User {
     String? id,
     String? name,
     double? weight,
+    int? age,
+    Sex? sex,
+    double? heightCm,
+    ActivityLevel? activityLevel,
     DateTime? createdAt,
   }) {
     return User(
       id: id ?? this.id,
       name: name ?? this.name,
       weight: weight ?? this.weight,
+      age: age ?? this.age,
+      sex: sex ?? this.sex,
+      heightCm: heightCm ?? this.heightCm,
+      activityLevel: activityLevel ?? this.activityLevel,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -35,7 +55,7 @@ class Exercise {
   final String muscleGroup;
   final String equipmentNeeded;
   final String difficultyLevel;
-  final String videoUrl;
+  final String mediaAsset;
 
   Exercise({
     required this.id,
@@ -44,7 +64,21 @@ class Exercise {
     required this.muscleGroup,
     required this.equipmentNeeded,
     required this.difficultyLevel,
-    required this.videoUrl,
+    required this.mediaAsset,
+  });
+}
+
+class ExerciseEntry {
+  final String exerciseId;
+  final int sets;
+  final int reps;
+  final DateTime timestamp;
+
+  ExerciseEntry({
+    required this.exerciseId,
+    required this.sets,
+    required this.reps,
+    required this.timestamp,
   });
 }
 
@@ -68,17 +102,27 @@ class DailyLog {
   final String id;
   final DateTime date;
   final List<String> completedExercises; // List of exercise IDs
+  final List<ExerciseEntry> exerciseEntries;
   final int caloriesConsumed;
   final int caloriesBurned;
   final double weight;
+  final double totalCarbs;
+  final double totalProtein;
+  final double totalFat;
+  final bool didExerciseToday;
 
   DailyLog({
     required this.id,
     required this.date,
     required this.completedExercises,
+    this.exerciseEntries = const [],
     required this.caloriesConsumed,
     required this.caloriesBurned,
     required this.weight,
+    this.totalCarbs = 0.0,
+    this.totalProtein = 0.0,
+    this.totalFat = 0.0,
+    this.didExerciseToday = false,
   });
 }
 
@@ -88,6 +132,9 @@ class FoodItem {
   final int caloriesPerUnit;
   final String unit;
   final String category; // Protein, Carbs, Fats, Vegetables, etc.
+  final double carbs;
+  final double protein;
+  final double fats;
   final String? barcode; // Optional barcode for Open Food Facts
   final String? brand; // Optional brand information
   final String? imageUrl; // Optional product image
@@ -99,6 +146,9 @@ class FoodItem {
     required this.caloriesPerUnit,
     required this.unit,
     required this.category,
+    this.carbs = 0.0,
+    this.protein = 0.0,
+    this.fats = 0.0,
     this.barcode,
     this.brand,
     this.imageUrl,
@@ -128,7 +178,7 @@ class FoodLog {
     this.mealType = 'General',
   });
 
-  int getTotalCalories() => calories * quantity;
+  int getTotalCalories() => calories;
 }
 
 class Habit {
@@ -136,14 +186,14 @@ class Habit {
   final String name;
   final String description;
   final bool completedToday;
-  final List<DateTime> completionHistory;
+  final Map<String, bool> completionHistory;
 
   Habit({
     required this.id,
     required this.name,
     required this.description,
     this.completedToday = false,
-    this.completionHistory = const [],
+    this.completionHistory = const {},
   });
 
   Habit copyWith({
@@ -151,7 +201,7 @@ class Habit {
     String? name,
     String? description,
     bool? completedToday,
-    List<DateTime>? completionHistory,
+    Map<String, bool>? completionHistory,
   }) {
     return Habit(
       id: id ?? this.id,

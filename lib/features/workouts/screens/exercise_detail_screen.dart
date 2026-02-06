@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../core/app_icons.dart';
+import 'package:provider/provider.dart';
+import '../../../core/glass_widgets.dart';
 import '../../../core/models.dart';
+import '../../../core/providers.dart';
 
-class ExerciseDetailScreen extends StatelessWidget {
+class ExerciseDetailScreen extends StatefulWidget {
   final Exercise exercise;
 
   const ExerciseDetailScreen({
@@ -10,18 +14,34 @@ class ExerciseDetailScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
- Widget build(BuildContext context) {
+  State<ExerciseDetailScreen> createState() => _ExerciseDetailScreenState();
+}
+
+class _ExerciseDetailScreenState extends State<ExerciseDetailScreen> {
+  final TextEditingController _setsController = TextEditingController();
+  final TextEditingController _repsController = TextEditingController();
+
+  @override
+  void dispose() {
+    _setsController.dispose();
+    _repsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final exercise = widget.exercise;
     return Scaffold(
       appBar: AppBar(
         title: Text(exercise.name),
         centerTitle: true,
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Exercise image/video placeholder
+            // Exercise media (GIF/WEBP) or placeholder
             Container(
               width: double.infinity,
               height: 200,
@@ -29,12 +49,9 @@ class ExerciseDetailScreen extends StatelessWidget {
                 color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
-                child: Icon(
-                  Icons.play_circle_outline,
-                  size: 64,
-                  color: Colors.grey,
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _buildExerciseMedia(exercise.mediaAsset),
               ),
             ),
             const SizedBox(height: 24),
@@ -69,6 +86,67 @@ class ExerciseDetailScreen extends StatelessWidget {
             _buildDetailCard('Equipment Needed', exercise.equipmentNeeded),
             const SizedBox(height: 16),
             _buildDetailCard('Difficulty Level', exercise.difficultyLevel),
+            const SizedBox(height: 16),
+            Text(
+              'Sets & Reps',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _setsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Sets',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _repsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Reps',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final sets = int.tryParse(_setsController.text) ?? 0;
+                  final reps = int.tryParse(_repsController.text) ?? 0;
+                  if (sets <= 0 || reps <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Enter valid sets and reps'),
+                      ),
+                    );
+                    return;
+                  }
+                  final provider = Provider.of<FitnessProvider>(
+                    context,
+                    listen: false,
+                  );
+                  await provider.addExerciseEntry(exercise.id, sets, reps);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Exercise saved')),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Done'),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -76,10 +154,10 @@ class ExerciseDetailScreen extends StatelessWidget {
   }
 
   Widget _buildDetailCard(String title, String content) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    return GlassCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -98,7 +176,30 @@ class ExerciseDetailScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseMedia(String mediaPath) {
+    final isAsset = mediaPath.startsWith('assets/');
+    if (isAsset) {
+      return Image.asset(
+        mediaPath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholder();
+        },
+      );
+    }
+    return _buildPlaceholder();
+  }
+
+  Widget _buildPlaceholder() {
+    return Center(
+      child: AppIcon(
+        AppIcons.play,
+        size: 64,
+        color: Colors.grey,
       ),
     );
   }

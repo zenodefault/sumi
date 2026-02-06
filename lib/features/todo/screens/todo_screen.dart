@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/app_icons.dart';
+import '../../../core/glass_widgets.dart';
 
 class TodoScreen extends StatefulWidget {
   const TodoScreen({Key? key}) : super(key: key);
@@ -27,11 +29,10 @@ class _TodoScreenState extends State<TodoScreen> {
         child: Column(
           children: [
             // Input field for adding new todos
-            Card(
-              color: const Color(0xFF1E1E1E),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
+            GlassCard(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
                   children: [
                     Expanded(
                       child: TextField(
@@ -53,7 +54,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add, color: Colors.white),
+                      icon: AppIcon(AppIcons.add, color: Colors.white),
                       onPressed: () {
                         if (_controller.text.trim().isNotEmpty) {
                           setState(() {
@@ -65,7 +66,6 @@ class _TodoScreenState extends State<TodoScreen> {
                     ),
                   ],
                 ),
-              ),
             ),
             const SizedBox(height: 16),
             // Todo list

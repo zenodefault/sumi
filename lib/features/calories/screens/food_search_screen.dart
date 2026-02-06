@@ -1,12 +1,16 @@
+// lib/features/calories/screens/food_search_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Added for context.read
+import 'package:provider/provider.dart';
+import '../../../core/app_icons.dart';
+import '../../../core/services/food_database_service.dart';
+import '../../../models/indian_food_model.dart';
 import '../../../core/providers.dart';
 import '../../../core/models.dart';
-import '../../../core/openfoodfacts_service.dart';
-import '../../../core/utils.dart';
+import '../../../core/glass_widgets.dart';
 
 class FoodSearchScreen extends StatefulWidget {
-  const FoodSearchScreen({Key? key}) : super(key: key);
+  const FoodSearchScreen({super.key});
 
   @override
   State<FoodSearchScreen> createState() => _FoodSearchScreenState();
@@ -14,68 +18,604 @@ class FoodSearchScreen extends StatefulWidget {
 
 class _FoodSearchScreenState extends State<FoodSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
-  List<FoodItem> _searchResults = [];
+  List<IndianFoodModel> _searchResults = [];
   bool _isLoading = false;
+  bool _isOffLoading = false;
+  String? _searchQuery;
+  Timer? _debounce;
+  int _searchToken = 0;
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+    _loadRecentFoods();
   }
 
-  Future<void> _performSearch() async {
-    if (_searchController.text.trim().isEmpty) {
+  Future<void> _loadRecentFoods() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load popular Indian foods as default
+      final results = await FoodDatabaseService.searchFoods('dal');
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(_searchController.text);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (query.trim().isEmpty) {
+      _loadRecentFoods();
+      return;
+    }
+
+    if (!mounted) return;
+
+    final token = ++_searchToken;
+    setState(() {
+      _isLoading = true;
+      _isOffLoading = false;
+      _searchQuery = query.trim();
+    });
+
+    final localResults =
+        await FoodDatabaseService.searchLocalFoods(query.trim());
+
+    if (!mounted || token != _searchToken) {
+      return;
+    }
+
+    if (localResults.isNotEmpty) {
+      setState(() {
+        _searchResults = localResults;
+        _isLoading = false;
+        _isOffLoading = false;
+      });
+      return;
+    }
+
+    if (query.trim().length < 3) {
       setState(() {
         _searchResults = [];
+        _isLoading = false;
+        _isOffLoading = false;
       });
       return;
     }
 
     setState(() {
-      _isLoading = true;
-      _searchResults = [];
+      _isLoading = false;
+      _isOffLoading = true;
     });
 
-    try {
-      final results = await OpenFoodFactsService.searchProductsByName(
-        _searchController.text.trim(),
-      );
+    final results = await FoodDatabaseService.searchFoods(query.trim());
+
+    if (!mounted || token != _searchToken) {
+      return;
+    }
+
+    if (mounted) {
       setState(() {
         _searchResults = results;
         _isLoading = false;
+        _isOffLoading = false;
       });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error searching for food: $e')));
     }
   }
 
-  Future<void> _addFoodToLog(FoodItem foodItem, {int quantity = 1}) async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Indian Food Search'),
+        backgroundColor: Colors.purple,
+        leading: IconButton(
+          icon: AppIcon(AppIcons.arrowLeft),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search Indian foods (dal, roti, biryani...)',
+                prefixIcon: AppIcon(AppIcons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: AppIcon(AppIcons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _loadRecentFoods();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          if (_isLoading || _isOffLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(
+                    minHeight: 2,
+                    color: Colors.purple,
+                    backgroundColor: Colors.purple.withValues(alpha: 0.2),
+                  ),
+                  if (_isOffLoading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        'Searching Open Food Facts...',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey,
+                            ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(child: _buildFoodList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.purple),
+      );
+    }
+
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppIcon(AppIcons.search, size: 60, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(
+              _searchQuery != null
+                  ? 'No foods found for "$_searchQuery"'
+                  : 'Search Indian foods',
+              style: const TextStyle(color: Colors.grey, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Try: "dal", "roti", "rice", "samosa", "biryani"',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _searchResults.length,
+      itemBuilder: (context, index) {
+        final food = _searchResults[index];
+        return _buildFoodCard(food);
+      },
+    );
+  }
+
+  Widget _buildFoodCard(IndianFoodModel food) {
+    // Calculate per-serving nutrients
+    final servingWeight = food.servingWeightInGrams;
+    final multiplier = servingWeight / 100.0;
+    final nutrients = food.getNutrientsForServing(multiplier);
+
+    return GlassCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildFoodImage(food),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFoodTitle(food),
+                      const SizedBox(height: 6),
+                      _buildFoodSubtitle(food, nutrients),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildLogButton(food, nutrients),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFoodImage(IndianFoodModel food) {
+    final imageUrl = food.imageUrl;
+    final isRemote = imageUrl.startsWith('http');
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.purple.withValues(alpha: 0.2),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: imageUrl.isEmpty
+            ? AppIcon(AppIcons.food, size: 30, color: Colors.purple)
+            : (isRemote
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        AppIcon(AppIcons.food, size: 30, color: Colors.purple),
+                  )
+                : Image.asset(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        AppIcon(AppIcons.food, size: 30, color: Colors.purple),
+                  )),
+      ),
+    );
+  }
+
+  Widget _buildFoodTitle(IndianFoodModel food) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          food.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 16,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (food.hindiName.isNotEmpty)
+          Text(
+            food.hindiName,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFoodSubtitle(
+    IndianFoodModel food,
+    Map<String, double> nutrients,
+  ) {
+    final sugar = nutrients['sugar'];
+    final hasProcessed = food.isProcessed != null;
+    final processedLabel =
+        food.isProcessed == null ? '' : (food.isProcessed! ? 'Processed' : 'Not processed');
+    final novaLabel =
+        food.novaGroup != null ? 'NOVA ${food.novaGroup}' : '';
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Serving: ${food.servingSize}',
+                style: const TextStyle(color: Colors.blueGrey, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            _nutrientChip(
+              'kcal',
+              '${nutrients['calories']?.toStringAsFixed(0)}',
+              Colors.orange,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (hasProcessed)
+          _nutrientChip(
+            processedLabel,
+            novaLabel,
+            food.isProcessed! ? Colors.orange : Colors.grey,
+            muted: !food.isProcessed!,
+          ),
+        if (hasProcessed) const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _nutrientChip(
+              'P',
+              '${nutrients['protein']?.toStringAsFixed(1)}g',
+              isLight ? Colors.green : Colors.greenAccent,
+            ),
+            _nutrientChip(
+              'C',
+              '${nutrients['carbs']?.toStringAsFixed(1)}g',
+              isLight ? Colors.blue : Colors.lightBlueAccent,
+            ),
+            _nutrientChip(
+              'F',
+              '${nutrients['fats']?.toStringAsFixed(1)}g',
+              isLight ? Colors.red : Colors.redAccent,
+            ),
+            if (sugar != null)
+              _nutrientChip(
+                'Sugar',
+                '${sugar.toStringAsFixed(1)}g',
+                Colors.orange,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _nutrientChip(
+    String label,
+    String value,
+    Color color, {
+    bool muted = false,
+  }) {
+    final bgColor = muted
+        ? color.withValues(alpha: 0.12)
+        : color.withValues(alpha: 0.18);
+    final textColor = muted ? color.withValues(alpha: 0.7) : color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        value.isEmpty ? label : '$label $value',
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogButton(IndianFoodModel food, Map<String, double> nutrients) {
+    return SizedBox(
+      width: 80,
+      child: ElevatedButton(
+        onPressed: () => _logFood(food, nutrients),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.purple,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        ),
+        child: const Text(
+          'Log',
+          style: TextStyle(color: Colors.white, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  void _logFood(IndianFoodModel food, Map<String, double> nutrients) {
+    final usesGrams = _usesGramUnit(food);
+    final unitLabel = _unitLabel(food);
+    // Show dialog to let user enter custom weight
+    showDialog(
+      context: context,
+      builder: (context) {
+        final weightController = TextEditingController(
+          text: usesGrams ? food.servingWeightInGrams.toString() : '1',
+        );
+
+        return AlertDialog(
+          title: Text('Log Food: ${food.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(usesGrams
+                  ? 'Enter amount in grams:'
+                  : 'Enter number of $unitLabel:'),
+              TextField(
+                controller: weightController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: usesGrams ? 'Amount in grams' : 'Number of $unitLabel',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Show calculated nutrients based on entered weight
+              FutureBuilder<Map<String, double>>(
+                future: _calculateNutrientsForAmount(
+                  food,
+                  double.tryParse(weightController.text) ??
+                      (usesGrams ? food.servingWeightInGrams : 1),
+                  usesGrams: usesGrams,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    final calculatedNutrients = snapshot.data!;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          usesGrams
+                              ? 'Nutrients for ${weightController.text}g:'
+                              : 'Nutrients for ${weightController.text} $unitLabel:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Calories: ${calculatedNutrients['calories']?.toStringAsFixed(1)} kcal',
+                        ),
+                        Text(
+                          'Protein: ${calculatedNutrients['protein']?.toStringAsFixed(1)}g',
+                        ),
+                        Text(
+                          'Carbs: ${calculatedNutrients['carbs']?.toStringAsFixed(1)}g',
+                        ),
+                        Text(
+                          'Fats: ${calculatedNutrients['fats']?.toStringAsFixed(1)}g',
+                        ),
+                        Text(
+                          'Fiber: ${calculatedNutrients['fiber']?.toStringAsFixed(1)}g',
+                        ),
+                        if (calculatedNutrients['sugar'] != null)
+                          Text(
+                            'Sugar: ${calculatedNutrients['sugar']?.toStringAsFixed(1)}g',
+                          ),
+                        if (food.isProcessed != null)
+                          Text(
+                            "Processed: ${food.isProcessed! ? 'Yes' : 'No'}"
+                            "${food.novaGroup != null ? ' (NOVA ${food.novaGroup})' : ''}",
+                          ),
+                      ],
+                    );
+                  } else {
+                    return Text(
+                      usesGrams
+                          ? 'Nutrients for ${food.servingWeightInGrams}g (default):'
+                          : 'Nutrients for 1 $unitLabel (default):',
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(weightController.text);
+                if (amount != null && amount > 0) {
+                  await _logFoodWithCustomAmount(
+                    food,
+                    amount,
+                    usesGrams: usesGrams,
+                  );
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter a valid amount')),
+                  );
+                }
+              },
+              child: Text('Log Food'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Calculate nutrients for a custom amount (grams or servings)
+  Future<Map<String, double>> _calculateNutrientsForAmount(
+    IndianFoodModel food,
+    double amount,
+    {required bool usesGrams},
+  ) async {
+    final grams = usesGrams ? amount : amount * food.servingWeightInGrams;
+    final multiplier = grams / 100.0; // Convert to per 100g basis
+    return food.getNutrientsForServing(multiplier);
+  }
+
+  // Log food with custom amount (grams or servings)
+  Future<void> _logFoodWithCustomAmount(
+    IndianFoodModel food,
+    double amount,
+    {required bool usesGrams},
+  ) async {
     final provider = context.read<FitnessProvider>();
+
+    // Calculate nutrients for the custom weight
+    final grams = usesGrams ? amount : amount * food.servingWeightInGrams;
+    final multiplier = grams / 100.0;
+    final nutrients = food.getNutrientsForServing(multiplier);
 
     final foodLog = FoodLog(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      foodItemId: foodItem.id,
-      foodName: foodItem.name,
-      calories: foodItem.caloriesPerUnit,
-      quantity: quantity,
-      unit: foodItem.unit,
+      foodItemId: food.id,
+      foodName: food.name,
+      calories: nutrients['calories']!.toInt(),
+      quantity: grams.toInt(), // Store the actual weight
+      unit: 'g',
       logDate: DateTime.now(),
       mealType: 'General', // Will allow user to select meal type later
     );
 
     try {
+      // Use the provider to add food log and update daily calories
       await provider.addFoodLog(foodLog);
       await provider.updateDailyLogWithCalories(); // Update daily calorie count
 
       if (mounted) {
         Navigator.pop(context); // Return to calories screen
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${foodItem.name} added to your food log!')),
+          SnackBar(
+            content: Text(
+              usesGrams
+                  ? '${food.name} (${grams.toStringAsFixed(0)}g) added to your food log!'
+                  : '${food.name} ($amount ${_unitLabel(food)}) added to your food log!',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -87,189 +627,63 @@ class _FoodSearchScreenState extends State<FoodSearchScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Search Food'), centerTitle: true),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+  bool _usesGramUnit(IndianFoodModel food) {
+    return RegExp(r'\d+\s*g', caseSensitive: false).hasMatch(food.servingSize);
+  }
+
+  String _unitLabel(IndianFoodModel food) {
+    final size = food.servingSize.toLowerCase();
+    if (size.contains('bowl')) return 'bowl(s)';
+    if (size.contains('cup')) return 'cup(s)';
+    if (size.contains('glass')) return 'glass(es)';
+    if (size.contains('plate')) return 'plate(s)';
+    if (size.contains('piece')) return 'piece(s)';
+    if (size.contains('serving')) return 'serving(s)';
+    return 'serving(s)';
+  }
+
+  Widget _buildAttributionFooter() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search bar
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search for food items...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchResults = [];
-                          });
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-              ),
-              onSubmitted: (_) => _performSearch(),
-            ),
-            const SizedBox(height: 16),
-
-            // Results header
-            if (_searchResults.isNotEmpty || _isLoading)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Search Results',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  if (_isLoading)
-                    const CircularProgressIndicator(strokeWidth: 2),
-                ],
-              ),
-
-            const SizedBox(height: 8),
-
-            // Results list
-            if (_searchResults.isEmpty && !_isLoading)
-              if (_searchController.text.isNotEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'No food items found',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      ],
+            Row(
+              children: [
+                AppIcon(AppIcons.info, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Nutritional data sources:',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-
-            if (_searchResults.isNotEmpty)
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _searchResults.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final foodItem = _searchResults[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  foodItem.name,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade100,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${foodItem.caloriesPerUnit} kcal',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${foodItem.caloriesPerUnit} kcal ${foodItem.unit}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                          if (foodItem.brand != null &&
-                              foodItem.brand!.isNotEmpty)
-                            Text(
-                              'Brand: ${foodItem.brand}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    foodItem.category,
-                                    style: TextStyle(
-                                      color: Colors.blue.shade700,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: () => _addFoodToLog(foodItem),
-                                icon: const Icon(Icons.add, size: 16),
-                                label: const Text('Add'),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '• Local: Indian Food Composition Tables 2017 (NIN-ICMR)',
+              style: TextStyle(color: Colors.blue, fontSize: 11),
+            ),
+            Text(
+              '• Global: Open Food Facts database',
+              style: TextStyle(color: Colors.blue, fontSize: 11),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Note: Data from Open Food Facts may vary from actual values.',
+              style: TextStyle(color: Colors.orange, fontSize: 10),
+            ),
           ],
         ),
       ),

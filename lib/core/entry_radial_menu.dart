@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_icons.dart';
 import 'dart:math' as math;
 
 class EntryRadialMenu extends StatefulWidget {
@@ -21,7 +22,8 @@ class EntryRadialMenu extends StatefulWidget {
   State<EntryRadialMenu> createState() => _EntryRadialMenuState();
 }
 
-class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProviderStateMixin {
+class _EntryRadialMenuState extends State<EntryRadialMenu>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _opacityAnimation;
   late Animation<double> _scaleAnimation;
@@ -35,40 +37,21 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut,
-      ),
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
     );
 
-    _opacityAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
     // Create animations for each menu item with stagger effect
     _itemAnimations = List.generate(
       4,
-      (index) => Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(
+      (index) => Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(
           parent: _animationController,
-          curve: Interval(
-            0.1 * index,
-            1.0,
-            curve: Curves.elasticOut,
-          ),
+          curve: Interval(0.1 * index, 1.0, curve: Curves.elasticOut),
         ),
       ),
     );
@@ -100,45 +83,43 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
                     });
                   },
                   child: Container(
-                    color: Colors.black.withValues(alpha: 0.5 * _opacityAnimation.value),
+                    color: Colors.black.withValues(
+                      alpha: 0.5 * _opacityAnimation.value,
+                    ),
                   ),
                 ),
               ),
               // Radial menu items
               Center(
-                child: Container(
+                child: SizedBox(
                   width: 300,
                   height: 300,
                   child: SizedBox(
                     width: 300,
                     height: 300,
                     child: Stack(
-                      children: [
-                        // Menu items arranged in a circle
-                        for (int i = 0; i < 4; i++)
-                          Positioned.fill(
-                            child: AnimatedBuilder(
-                              animation: _itemAnimations[i],
-                              builder: (context, child) {
-                                // Calculate position in a circle
-                                final angle = (i * 90 - 45) * (3.14159265359 / 180); // 45° apart, starting at -45°
-                                final radius = 100.0 * _itemAnimations[i].value;
-                                final x = 150 + radius * math.cos(angle);
-                                final y = 150 + radius * math.sin(angle);
- 
-                                return Positioned(
-                                  left: x - 40,
-                                  top: y - 40,
-                                  child: Transform.scale(
-                                    scale: _itemAnimations[i].value,
-                                    child: _buildMenuItem(i),
-                                  ),
-                                );
-                              },
+                    children: List.generate(4, (i) {
+                      return AnimatedBuilder(
+                        animation: _itemAnimations[i],
+                        builder: (context, child) {
+                          // Calculate position in a circle
+                          final angle = (i * 90 - 45) * (math.pi / 180);
+                          final radius = 100.0 * _itemAnimations[i].value;
+                          final x = 150 + radius * math.cos(angle);
+                          final y = 150 + radius * math.sin(angle);
+
+                          return Positioned(
+                            left: x - 40,
+                            top: y - 40,
+                            child: Transform.scale(
+                              scale: _itemAnimations[i].value,
+                              child: _buildMenuItem(i),
                             ),
-                          ),
-                      ],
-                    ),
+                          );
+                        },
+                      );
+                    }),
+                  ),
                   ),
                 ),
               ),
@@ -150,13 +131,13 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
   }
 
   Widget _buildMenuItem(int index) {
-    late IconData icon;
+    late List<List<dynamic>> icon;
     late String label;
     late VoidCallback onPressed;
 
     switch (index) {
       case 0: // Workout
-        icon = Icons.fitness_center;
+        icon = AppIcons.dumbbell;
         label = 'Workout';
         onPressed = () {
           _animationController.reverse().then((_) {
@@ -166,7 +147,7 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
         };
         break;
       case 1: // Calories
-        icon = Icons.local_fire_department;
+        icon = AppIcons.calories;
         label = 'Calories';
         onPressed = () {
           _animationController.reverse().then((_) {
@@ -176,7 +157,7 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
         };
         break;
       case 2: // Habit
-        icon = Icons.check_circle_outline;
+        icon = AppIcons.habits;
         label = 'Habit';
         onPressed = () {
           _animationController.reverse().then((_) {
@@ -186,7 +167,7 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
         };
         break;
       case 3: // To-Do
-        icon = Icons.list_alt;
+        icon = AppIcons.list;
         label = 'To-Do';
         onPressed = () {
           _animationController.reverse().then((_) {
@@ -196,7 +177,7 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
         };
         break;
       default:
-        icon = Icons.help;
+        icon = AppIcons.help;
         label = 'Unknown';
         onPressed = () {};
         break;
@@ -224,11 +205,7 @@ class _EntryRadialMenuState extends State<EntryRadialMenu> with SingleTickerProv
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                color: Colors.white,
-                size: 24,
-              ),
+              AppIcon(icon, color: Colors.white, size: 24),
               const SizedBox(height: 4),
               Text(
                 label,

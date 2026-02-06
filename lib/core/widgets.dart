@@ -1,140 +1,202 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'dart:ui' as ui show ImageFilter;
+import 'app_colors.dart';
 
-class RadialMenu extends StatefulWidget {
-  final List<RadialMenuItem> items;
+/// A glassmorphism card specifically designed for dashboard items
+class GlassDashboardCard extends StatelessWidget {
   final Widget child;
-  final Duration animationDuration;
-  final double radius;
-  final VoidCallback? onItemPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double borderRadius;
+  final double blur;
+  final double opacity;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final VoidCallback? onTap;
+  final BoxShadow? boxShadow;
 
-  const RadialMenu({
+  const GlassDashboardCard({
     super.key,
-    required this.items,
     required this.child,
-    this.animationDuration = const Duration(milliseconds: 300),
-    this.radius = 100.0,
-    this.onItemPressed,
+    this.backgroundColor = const Color.fromRGBO(255, 255, 255, 0.1),
+    this.foregroundColor = Colors.white,
+    this.borderRadius = 20.0,
+    this.blur = 12.0,
+    this.opacity = 0.15,
+    this.padding = const EdgeInsets.all(20.0),
+    this.margin = const EdgeInsets.all(8.0),
+    this.onTap,
+    this.boxShadow,
   });
-
-  @override
-  _RadialMenuState createState() => _RadialMenuState();
-}
-
-class _RadialMenuState extends State<RadialMenu>
-    with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  bool _isExpanded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: widget.animationDuration,
-      vsync: this,
-    );
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _toggleMenu() {
-    if (_isExpanded) {
-      _controller.reverse();
-    } else {
-      _controller.forward();
-    }
-    _isExpanded = !_isExpanded;
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Menu items
-        AnimatedBuilder(
-          animation: _animation,
-          builder: (context, animationChild) {
-            return Stack(
-              children: List.generate(widget.items.length, (index) {
-                double angle = (2 * math.pi / widget.items.length) * index - (math.pi / 2);
-                double x = widget.radius * _animation.value * math.cos(angle);
-                double y = widget.radius * _animation.value * math.sin(angle);
-                
-                return Positioned(
-                  left: x,
-                  top: y,
-                  child: Transform.translate(
-                    offset: Offset(-x * (1 - _animation.value), -y * (1 - _animation.value)),
-                    child: ScaleTransition(
-                      scale: _animation,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              widget.items[index].onPressed?.call();
-                              widget.onItemPressed?.call();
-                              _toggleMenu();
-                            },
-                            borderRadius: BorderRadius.circular(28),
-                            child: Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                widget.items[index].icon,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            );
-          },
+    final theme = Theme.of(context);
+    final hasTap = onTap != null;
+
+    Widget card = Container(
+      margin: margin,
+      decoration: BoxDecoration(
+        color:
+            (theme.brightness == Brightness.light
+                    ? LightColors.card
+                    : DarkColors.card)
+                .withValues(alpha: opacity),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: (theme.brightness == Brightness.light
+              ? LightColors.muted
+              : DarkColors.muted),
+          width: 0.5,
         ),
-        // Main button
-        GestureDetector(
-          onLongPress: _toggleMenu,
-          child: widget.child,
+        boxShadow: [
+          if (boxShadow != null) boxShadow!,
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: blur,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: Container(
+            padding: padding,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                textTheme: Theme.of(context).textTheme.apply(
+                  bodyColor: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                  displayColor: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+                iconTheme: IconThemeData(
+                  color: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+              ),
+              child: DefaultTextStyle(
+                style: TextStyle(
+                  color: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+                child: child,
+              ),
+            ),
+          ),
         ),
-      ],
+      ),
     );
+
+    if (hasTap) {
+      return GestureDetector(onTap: onTap, child: card);
+    }
+
+    return card;
   }
 }
 
-class RadialMenuItem {
-  final IconData icon;
-  final VoidCallback? onPressed;
+/// Enhanced glass container with more customization options
+class EnhancedGlassContainer extends StatelessWidget {
+  final Widget? child;
+  final double? width;
+  final double? height;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double borderRadius;
+  final double blur;
+  final double opacity;
+  final Border? border;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final AlignmentGeometry alignment;
+  final List<BoxShadow>? shadows;
 
-  const RadialMenuItem({
-    required this.icon,
-    this.onPressed,
+  const EnhancedGlassContainer({
+    super.key,
+    this.child,
+    this.width,
+    this.height,
+    this.backgroundColor = const Color.fromRGBO(255, 255, 255, 0.1),
+    this.foregroundColor = Colors.white,
+    this.borderRadius = 20.0,
+    this.blur = 10.0,
+    this.opacity = 0.15,
+    this.border,
+    this.padding = const EdgeInsets.all(16.0),
+    this.margin = const EdgeInsets.all(8.0),
+    this.alignment = Alignment.center,
+    this.shadows,
   });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: width,
+      height: height,
+      margin: margin,
+      decoration: BoxDecoration(
+        color:
+            (theme.brightness == Brightness.light
+                    ? LightColors.card
+                    : DarkColors.card)
+                .withValues(alpha: opacity),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: border,
+        boxShadow:
+            shadows ??
+            [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                spreadRadius: 1,
+                blurRadius: blur,
+                offset: const Offset(0, 4),
+              ),
+            ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: Container(
+            padding: padding,
+            alignment: alignment,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                textTheme: Theme.of(context).textTheme.apply(
+                  bodyColor: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                  displayColor: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+                iconTheme: IconThemeData(
+                  color: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+              ),
+              child: DefaultTextStyle(
+                style: TextStyle(
+                  color: (theme.brightness == Brightness.light
+                      ? LightColors.foreground
+                      : DarkColors.foreground),
+                ),
+                child: child ?? const SizedBox(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -24,6 +24,10 @@ class StorageService {
       'id': user.id,
       'name': user.name,
       'weight': user.weight,
+      'age': user.age,
+      'sex': user.sex.name,
+      'heightCm': user.heightCm,
+      'activityLevel': user.activityLevel.name,
       'createdAt': user.createdAt.toIso8601String(),
     }));
   }
@@ -38,6 +42,16 @@ class StorageService {
         id: data['id'],
         name: data['name'],
         weight: data['weight'].toDouble(),
+        age: (data['age'] ?? 0).toInt(),
+        sex: Sex.values.firstWhere(
+          (value) => value.name == data['sex'],
+          orElse: () => Sex.other,
+        ),
+        heightCm: (data['heightCm'] ?? 0).toDouble(),
+        activityLevel: ActivityLevel.values.firstWhere(
+          (value) => value.name == data['activityLevel'],
+          orElse: () => ActivityLevel.low,
+        ),
         createdAt: DateTime.parse(data['createdAt']),
       );
     }
@@ -61,9 +75,19 @@ class StorageService {
       'id': log.id,
       'date': log.date.toIso8601String(),
       'completedExercises': log.completedExercises,
+      'exerciseEntries': log.exerciseEntries.map((entry) => {
+        'exerciseId': entry.exerciseId,
+        'sets': entry.sets,
+        'reps': entry.reps,
+        'timestamp': entry.timestamp.toIso8601String(),
+      }).toList(),
       'caloriesConsumed': log.caloriesConsumed,
       'caloriesBurned': log.caloriesBurned,
       'weight': log.weight,
+      'totalCarbs': log.totalCarbs,
+      'totalProtein': log.totalProtein,
+      'totalFat': log.totalFat,
+      'didExerciseToday': log.didExerciseToday,
     }).toList()));
   }
 
@@ -77,9 +101,21 @@ class StorageService {
         id: json['id'],
         date: DateTime.parse(json['date']),
         completedExercises: List<String>.from(json['completedExercises']),
+        exerciseEntries: (json['exerciseEntries'] as List<dynamic>? ?? [])
+            .map((entry) => ExerciseEntry(
+                  exerciseId: entry['exerciseId'],
+                  sets: entry['sets'],
+                  reps: entry['reps'],
+                  timestamp: DateTime.parse(entry['timestamp']),
+                ))
+            .toList(),
         caloriesConsumed: json['caloriesConsumed'],
         caloriesBurned: json['caloriesBurned'],
         weight: json['weight'].toDouble(),
+        totalCarbs: json['totalCarbs']?.toDouble() ?? 0.0,
+        totalProtein: json['totalProtein']?.toDouble() ?? 0.0,
+        totalFat: json['totalFat']?.toDouble() ?? 0.0,
+        didExerciseToday: json['didExerciseToday'] ?? false,
       )).toList();
     }
     return [];
@@ -93,7 +129,7 @@ class StorageService {
       'name': habit.name,
       'description': habit.description,
       'completedToday': habit.completedToday,
-      'completionHistory': habit.completionHistory.map((date) => date.toIso8601String()).toList(),
+      'completionHistory': habit.completionHistory,
     }).toList()));
   }
 
@@ -107,10 +143,8 @@ class StorageService {
         id: json['id'],
         name: json['name'],
         description: json['description'],
-        completedToday: json['completedToday'],
-        completionHistory: List<String>.from(json['completionHistory'])
-            .map((dateStr) => DateTime.parse(dateStr))
-            .toList(),
+        completedToday: json['completedToday'] ?? false,
+        completionHistory: Map<String, bool>.from(json['completionHistory']),
       )).toList();
     }
     return [];

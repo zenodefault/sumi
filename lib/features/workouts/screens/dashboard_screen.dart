@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter/widgets.dart';
+import '../../../core/app_icons.dart';
 import 'package:provider/provider.dart';
-import '../../../core/models.dart';
-import '../../../core/theme.dart';
+import '../../../core/app_colors.dart';
 import '../../../core/providers.dart';
-import '../../../core/utils.dart';
 import '../../../core/entry_radial_menu.dart';
-import 'workout_day_detail_screen.dart';
-import '../../calendar/screens/calendar_screen.dart';
-import '../../anatomy/screens/anatomy_screen.dart';
-import '../../calories/screens/calories_screen.dart';
-import '../../habits/screens/habits_screen.dart';
+import '../../../core/glass_widgets.dart';
+import '../../../core/widgets.dart';
 import '../../todo/screens/todo_screen.dart';
+import '../widgets/calendar_card_widget.dart';
+import '../../habits/widgets/streak_card.dart';
+import '../../profile/screens/user_profile_screen.dart';
+import '../../calories/screens/calorie_tracking_screen.dart';
+import '../../anatomy/screens/anatomy_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key}) : super();
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -23,426 +22,400 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _showRadialMenu = false;
+  bool _cardsVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _cardsVisible = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<FitnessProvider>(context);
-    
-    return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Dark background
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 24),
-              // Title
-              Text(
-                'Dashboard',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Metrics grid
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.0, // Square aspect ratio
-                  children: [
-                    // WORKOUT CARD: Circular counter showing "1", subtitle "Chest + Triceps • Fridays", navigation to Anatomy screen with chest pre-selected
-                    _buildWorkoutCard(provider),
-                    
-                    // CALORIES CARD: Showing "2,100 / 2,500 kcal" with 84% progress bar, navigation to Calorie Tracker with "Indian Foods" tab active
-                    _buildCaloriesCard(provider),
-                    
-                    // HABITS CARD: Showing "5/7 habits • 3-day streak" with flame icon animation for streak, navigation to Habit Tracker screen
-                    _buildHabitsCard(provider),
-                    
-                    // VOLUME CARD: Showing "3,200 lbs" with weekly trend arrow ↑12% and mini bar chart (7 days)
-                    _buildVolumeCard(provider),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ), // This is the body property closing
-      floatingActionButton: _showRadialMenu
-         ? null // Hide default FAB when radial menu is shown
-         : GestureDetector(
-             onLongPress: () {
-               // Long press - show radial menu
-               setState(() {
-                 _showRadialMenu = true;
-               });
-             },
-             onTap: () {
-               // Short press - show radial menu
-               setState(() {
-                 _showRadialMenu = true;
-               });
-             },
-             child: FloatingActionButton(
-               onPressed: () {
-                 // Short press - show radial menu
-                 setState(() {
-                   _showRadialMenu = true;
-                 });
-               },
-               backgroundColor: FitnessTheme.accentPurple,
-               child: const Icon(
-                 Icons.add,
-                 color: Colors.white,
-               ),
-             ),
-           ),
-     floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-     // Overlay for radial menu
-     extendBody: true,
-     bottomSheet: _showRadialMenu
-         ? EntryRadialMenu(
-             onWorkoutPressed: () {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(
-                   builder: (context) => AnatomyScreen(),
-                   settings: const RouteSettings(arguments: {'preselectMuscle': 'Chest'}),
-                 ),
-               );
-             },
-             onCaloriesPressed: () {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(
-                   builder: (context) => CaloriesScreen(),
-                   settings: const RouteSettings(arguments: {'activeTab': 'Indian Foods'}),
-                 ),
-               );
-             },
-             onHabitPressed: () {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(builder: (context) => const HabitsScreen()),
-               );
-             },
-             onTodoPressed: () {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(builder: (context) => const TodoScreen()),
-               );
-             },
-             onClose: () {
-               setState(() {
-                 _showRadialMenu = false;
-               });
-             },
-           )
-         : null,
-   );
- }
+    final theme = Theme.of(context);
 
-  Widget _buildWorkoutCard(FitnessProvider provider) {
-    return GestureDetector(
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Main content
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 24),
+                  // Title row with profile icon
+                  GlassContainer(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    borderRadius: 18,
+                    opacity: 0.2,
+                    blur: 14,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            provider.user == null ||
+                                    provider.user!.name.isEmpty
+                                ? 'Welcome!!'
+                                : 'Welcome ${provider.user!.name}!!',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: theme.brightness == Brightness.light
+                                  ? LightColors.foreground
+                                  : DarkColors.foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        GlassContainer(
+                          margin: EdgeInsets.zero,
+                          padding: const EdgeInsets.all(6),
+                          borderRadius: 20,
+                          opacity: 0.24,
+                          blur: 14,
+                          child: IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const UserProfileScreen(),
+                                ),
+                              );
+                            },
+                            icon: AppIcon(AppIcons.user),
+                            color: theme.brightness == Brightness.light
+                                ? LightColors.foreground
+                                : DarkColors.foreground,
+                            tooltip: 'Profile',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Metrics grid
+                  Container(
+                    height: 200, // Fixed height for the grid
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.0, // Square aspect ratio
+                      shrinkWrap: true,
+                      children: [
+                        // EXERCISE STREAK CARD
+                        _buildAnimatedCard(
+                          _buildExerciseStreakCard(provider, theme),
+                          delay: 0,
+                        ),
+                        // STREAK CARD: Shows habit tracking streaks
+                        _buildAnimatedCard(
+                          const StreakCard(),
+                          delay: 80,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // CALENDAR CARD: Shows three months with workout activity dots
+                  Container(
+                    height:
+                        220, // Increased height to accommodate content better
+                    child: _buildAnimatedCard(
+                      const CalendarCardWidget(),
+                      delay: 140,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAnimatedCard(
+                    _buildCaloriesProgressCard(provider, theme),
+                    delay: 200,
+                  ),
+                ],
+              ),
+            ),
+            // Radial menu overlay when needed - make sure it doesn't interfere with main content
+            if (_showRadialMenu)
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: false,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: EntryRadialMenu(
+                      onWorkoutPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AnatomyScreen(),
+                            settings: const RouteSettings(
+                              arguments: {'preselectMuscle': 'Chest'},
+                            ),
+                          ),
+                        );
+                      },
+                      onTodoPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TodoScreen(),
+                          ),
+                        );
+                      },
+                      onClose: () {
+                        setState(() {
+                          _showRadialMenu = false;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExerciseStreakCard(FitnessProvider provider, ThemeData theme) {
+    final isLight = theme.brightness == Brightness.light;
+    final streak = provider.getExerciseStreak();
+
+    return GlassDashboardCard(
+      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.zero,
+      opacity: 0.24,
+      blur: 14,
       onTap: () {
-        // Navigate to Anatomy screen with chest pre-selected
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => AnatomyScreen(),
-            settings: const RouteSettings(arguments: {'preselectMuscle': 'Chest'}),
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final iconSize = constraints.maxHeight < 140 ? 40.0 : 50.0;
+          final titleSize = constraints.maxHeight < 140 ? 14.0 : 16.0;
+          final streakSize = constraints.maxHeight < 140 ? 18.0 : 20.0;
+          final subtitleSize = constraints.maxHeight < 140 ? 11.0 : 12.0;
+
+          return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Circular counter showing "1"
               Container(
-                width: 64,
-                height: 64,
-                child: Stack(
-                  alignment: Alignment.center,
+                width: iconSize,
+                height: iconSize,
+                decoration: BoxDecoration(
+                  color: (isLight ? LightColors.primary : DarkColors.primary)
+                      .withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: AppIcon(
+                  AppIcons.dumbbell,
+                  color: isLight ? LightColors.primary : DarkColors.primary,
+                  size: iconSize * 0.55,
+                ),
+              ),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Exercise Streak',
+                  style: TextStyle(
+                    color:
+                        isLight ? LightColors.foreground : DarkColors.foreground,
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$streak days',
+                  style: TextStyle(
+                    color: isLight ? LightColors.primary : DarkColors.primary,
+                    fontSize: streakSize,
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        color: (isLight
+                                ? LightColors.primary
+                                : DarkColors.primary)
+                            .withAlpha(120),
+                        blurRadius: 6,
+                        offset: const Offset(0, 0),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Tap to train',
+                  style: TextStyle(
+                    color: isLight
+                        ? LightColors.mutedForeground
+                        : DarkColors.mutedForeground,
+                    fontSize: subtitleSize,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAnimatedCard(Widget child, {required int delay}) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 380),
+      opacity: _cardsVisible ? 1 : 0,
+      curve: Curves.easeOutCubic,
+      child: AnimatedSlide(
+        duration: const Duration(milliseconds: 380),
+        offset: _cardsVisible ? Offset.zero : const Offset(0, 0.03),
+        curve: Curves.easeOutCubic,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildCaloriesProgressCard(
+    FitnessProvider provider,
+    ThemeData theme,
+  ) {
+    final isLight = theme.brightness == Brightness.light;
+    final calorieGoal = provider.getTdee();
+    final consumed = provider.getTodaysCaloriesConsumed().toDouble();
+    final progress = (consumed / calorieGoal).clamp(0.0, 1.0);
+
+    return GlassDashboardCard(
+      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.zero,
+      opacity: 0.24,
+      blur: 14,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CalorieTrackingScreen(),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 64,
-                      height: 64,
-                      child: CircularProgressIndicator(
-                        value: 1.0, // 10% filled
-                        strokeWidth: 6,
-                        backgroundColor: const Color(0xFF33333),
-                        valueColor: AlwaysStoppedAnimation<Color>(FitnessTheme.accentPurple),
+                    Text(
+                      'Calories',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isLight
+                            ? LightColors.foreground
+                            : DarkColors.foreground,
                       ),
                     ),
-                    const Text(
-                      '1',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(height: 2),
+                    Text(
+                      'Today',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isLight
+                            ? LightColors.mutedForeground
+                            : DarkColors.mutedForeground,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              // Title
-              const Text(
-                'Chest + Triceps',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+              Container(
+                width: 1,
+                height: 28,
+                color: (isLight
+                        ? LightColors.mutedForeground
+                        : DarkColors.mutedForeground)
+                    .withAlpha(50),
               ),
-              const SizedBox(height: 4),
-              // Subtitle
-              const Text(
-                'Fridays',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
+              const SizedBox(width: 12),
+              Text(
+                '${consumed.toStringAsFixed(0)} kcal',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isLight
+                      ? LightColors.foreground
+                      : DarkColors.foreground,
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
- }
-
-  Widget _buildCaloriesCard(FitnessProvider provider) {
-    // Calculate calories data
-    int consumed = 2100; // Today's consumed calories
-    int goal = 2500; // Daily goal
-    double progress = consumed / goal; // 0.84 (84%)
-    
-    return GestureDetector(
-      onTap: () {
-        // Navigate to Calorie Tracker with "Indian Foods" tab active
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CaloriesScreen(),
-            settings: const RouteSettings(arguments: {'activeTab': 'Indian Foods'}),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Calories text
-              Text(
-                '${consumed.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => "${m[1]},")} / ${goal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => "${m[1]},")} kcal',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                Container(
+                  height: 18,
+                  color: isLight ? LightColors.muted : DarkColors.muted,
                 ),
-              ),
-              const SizedBox(height: 12),
-              // Progress bar
-              Container(
-                width: 100,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF33333),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: const Color(0xFF33333),
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                FractionallySizedBox(
+                  widthFactor: progress,
+                  child: Container(
+                    height: 18,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          (isLight
+                                  ? LightColors.primary
+                                  : DarkColors.primary)
+                              .withOpacity(0.35),
+                          (isLight
+                                  ? LightColors.primary
+                                  : DarkColors.primary)
+                              .withOpacity(0.15),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              // Progress percentage
-              Text(
-                '${(progress * 100).round()}%',
-                style: const TextStyle(
-                  color: Colors.orange,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
- Widget _buildHabitsCard(FitnessProvider provider) {
-     int completedHabits = 5;
-     int totalHabits = 7;
-     int streak = 3;
-     
-     return GestureDetector(
-       onTap: () {
-         // Navigate to Habit Tracker screen
-         Navigator.push(
-           context,
-           MaterialPageRoute(
-             builder: (context) => const HabitsScreen(),
-           ),
-         );
-       },
-       child: Container(
-         decoration: BoxDecoration(
-           color: const Color(0xFF1E1E1E),
-           borderRadius: BorderRadius.circular(20),
-           boxShadow: [
-             BoxShadow(
-               color: Colors.black.withOpacity(0.3),
-               blurRadius: 10,
-               offset: const Offset(0, 4),
-             ),
-           ],
-         ),
-         child: ClipRRect(
-           borderRadius: BorderRadius.circular(20),
-           child: Column(
-             mainAxisAlignment: MainAxisAlignment.center,
-             children: [
-               // Flame icon for streak
-               Icon(
-                 Icons.local_fire_department,
-                 color: Colors.orange,
-                 size: 28,
-               ),
-               const SizedBox(height: 8),
-               // Streak count
-               Text(
-                 '$streak-day streak',
-                 style: const TextStyle(
-                   color: Colors.orange,
-                   fontSize: 14,
-                   fontWeight: FontWeight.w500,
-                 ),
-               ),
-               const SizedBox(height: 12),
-               // Habits progress
-               Text(
-                 '$completedHabits/$totalHabits habits',
-                 style: const TextStyle(
-                   color: Colors.white,
-                   fontSize: 16,
-                   fontWeight: FontWeight.w500,
-                 ),
-               ),
-             ],
-           ),
-         ),
-       ),
-     );
-   }
-
- Widget _buildVolumeCard(FitnessProvider provider) {
-    String volume = '3,200 lbs';
-    String trend = '↑12%';
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+          const SizedBox(height: 6),
+          Text(
+            '${consumed.toStringAsFixed(0)} / ${calorieGoal.toStringAsFixed(0)} kcal',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isLight
+                  ? LightColors.mutedForeground
+                  : DarkColors.mutedForeground,
+            ),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Volume text
-            Text(
-              volume,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Trend indicator
-            Text(
-              trend,
-              style: const TextStyle(
-                color: Colors.green,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Mini bar chart (7 days)
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(7, (index) {
-                  // Generate random heights for demonstration
-                  double height = 0.3 + (index * 0.1); // Varying heights
-                  if (index == 3) height = 0.8; // Peak day
-                  
-                  return Container(
-                    width: 6,
-                    height: height * 40,
-                    decoration: BoxDecoration(
-                      color: FitnessTheme.accentPurple,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
- bool _hasActivity(int day) {
-    // Simulate activity on certain days
-    return day % 3 == 0 || day % 5 == 0;
-  }
+  // duplicate exercise streak card removed
 }

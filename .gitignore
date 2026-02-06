@@ -78,6 +78,8 @@ app.*.map.json
 *.crt
 *.ovpn
 *.kdbx
+**/google-services.json
+**/GoogleService-Info.plist
 
 # Additional Flutter/Dart sensitive files
 .dart_tool/package_config.lock

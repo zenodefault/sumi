@@ -1,116 +1,148 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'app_icons.dart';
+import 'glass_widgets.dart';
 import '../features/workouts/screens/dashboard_screen.dart';
-import '../features/calendar/screens/calendar_screen.dart';
 import '../features/anatomy/screens/anatomy_screen.dart';
-import '../features/calories/screens/calories_screen.dart';
+import '../features/calories/screens/calorie_tracking_screen.dart';
 import '../features/habits/screens/habits_screen.dart';
+import '../features/analytics/screens/analytics_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({Key? key}) : super(key: key);
+  const AppShell({super.key});
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  int _selectedIndex = 0;
+  late final ValueNotifier<int> _selectedIndex;
+  late final PageController _pageController;
 
-  final List<Widget> _screens = [
-    const DashboardScreen(), // Workouts/Dashboard
-    const CalendarScreen(),  // Calendar
-    const AnatomyScreen(),   // Anatomy
-    const CaloriesScreen(),  // Calories
-    const HabitsScreen(),    // Habits
+  final List<Widget> _screens = const [
+    DashboardScreen(), // Workouts/Dashboard
+    AnalyticsScreen(), // Analytics
+    AnatomyScreen(), // Anatomy
+    CalorieTrackingScreen(), // Calories
+    HabitsScreen(), // Habits
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = ValueNotifier(0);
+    _pageController = PageController(initialPage: _selectedIndex.value);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _selectedIndex.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        height: 76,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.all(Radius.circular(32)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.all(Radius.circular(32)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 128,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).textTheme.bodyLarge?.color,
-                  borderRadius: BorderRadius.circular(2),
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            physics: const PageScrollPhysics(),
+            allowImplicitScrolling: true,
+            dragStartBehavior: DragStartBehavior.down,
+            onPageChanged: (index) {
+              _selectedIndex.value = index;
+            },
+            itemCount: _screens.length,
+            itemBuilder: (context, index) {
+              return RepaintBoundary(child: _screens[index]);
+            },
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 24,
+            child: SafeArea(
+              top: false,
+              child: GlassCard(
+                margin: EdgeInsets.zero,
+                padding: EdgeInsets.zero,
+                borderRadius: 32,
+                blur: 18,
+                opacity: 0.22,
+                child: SizedBox(
+                  height: 64,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(32)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildBottomNavItem(0, AppIcons.dashboard, 'Dashboard'),
+                        _buildBottomNavItem(1, AppIcons.analytics, 'Analytics'),
+                        _buildBottomNavItem(2, AppIcons.anatomy, 'Anatomy'),
+                        _buildBottomNavItem(
+                          3,
+                          AppIcons.calories,
+                          'Calories',
+                        ),
+                        _buildBottomNavItem(
+                          4,
+                          AppIcons.habits,
+                          'Habits',
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildBottomNavItem(0, Icons.apps, 'Dashboard'),
-                  _buildBottomNavItem(1, Icons.calendar_today, 'Calendar'),
-                  _buildBottomNavItem(2, Icons.accessibility, 'Anatomy'),
-                  _buildBottomNavItem(3, Icons.local_fire_department, 'Calories'),
-                  _buildBottomNavItem(4, Icons.check_circle_outline, 'Habits'),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
- Widget _buildBottomNavItem(int index, IconData icon, String label) {
-    final isSelected = _selectedIndex == index;
+  Widget _buildBottomNavItem(
+    int index,
+    List<List<dynamic>> icon,
+    String label,
+  ) {
     final theme = Theme.of(context);
-    
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        child: Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
+
+    return Flexible(
+      child: ValueListenableBuilder<int>(
+        valueListenable: _selectedIndex,
+        builder: (context, selectedIndex, child) {
+          final isSelected = selectedIndex == index;
+          return GestureDetector(
+            onTap: () {
+              _selectedIndex.value = index;
+              _pageController.jumpToPage(index);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.all(isSelected ? 8 : 6),
+                decoration: BoxDecoration(
                   color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ? theme.colorScheme.primary.withAlpha(25)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: AppIcon(
+                  icon,
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.textTheme.bodyMedium?.color?.withAlpha(153),
+                  size: isSelected ? 26 : 22,
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
- }
+  }
 }
